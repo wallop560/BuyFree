@@ -12,24 +12,20 @@ def GetIds():
   Request = requests.get(f'https://catalog.roblox.com/v1/search/items?category=All&creatorTargetId=1&cursor=1_2_38d43aaad573938654a22a6ae8524251&limit=60&maxPrice={MaxPrice}&minPrice={MinPrice}').json()
   for Asset in Request["data"]:
     id = Asset['id']
-    try:
-      if Asset['itemType'] == 'Asset':
-        pid = requests.get(f'https://api.roblox.com/marketplace/productinfo?assetId={id}').json()
-        print(id)
-        p = pid['ProductId']
-      else:
-        pid = requests.get(f'https://catalog.roblox.com/v1/bundles/{id}/details').json()
-        p = pid['product']['id']
-    except:
-      print('waiting 60')
-      time.sleep(60)
-      if Asset['itemType'] == 'Asset':
-        pid = requests.get(f'https://api.roblox.com/marketplace/productinfo?assetId={id}').json()
-        print(id)
-        p = pid['ProductId']
-      else:
-        pid = requests.get(f'https://catalog.roblox.com/v1/bundles/{id}/details').json()
-        p = pid['product']['id']
+    HasDoneSucess = False
+    while not HasDoneSucess:
+      try:
+        if Asset['itemType'] == 'Asset':
+          pid = requests.get(f'https://api.roblox.com/marketplace/productinfo?assetId={id}').json()
+          print(id)
+          p = pid['ProductId']
+        else:
+          pid = requests.get(f'https://catalog.roblox.com/v1/bundles/{id}/details').json()
+          p = pid['product']['id']
+        HasDoneSucess = True
+      except:
+        time.sleep(.1)
+        break
     Ids.append(p)
   Cursor = Request["nextPageCursor"]
   while Cursor:
@@ -73,13 +69,14 @@ Ids = GetIds()
 
 
 for Asset in Ids:
-  post = session.post(f'https://economy.roblox.com/v1/purchases/products/{Asset}', data={'expectedCurrency': 1, 'expectedPrice': 0, 'expectedSellerId': 1} ,headers={"X-CSRF-TOKEN": xc})
-  print(f'Bought item {Asset}')
-  if 'TooManyRequests' in post.text:
-    print('Too many requests, waiting 60 sec')
-    for i in range(60):
-      print(60-i)
-      time.sleep(1)
+  HasDoneSucess = False
+  while not HasDoneSucess:
     post = session.post(f'https://economy.roblox.com/v1/purchases/products/{Asset}', data={'expectedCurrency': 1, 'expectedPrice': 0, 'expectedSellerId': 1} ,headers={"X-CSRF-TOKEN": xc})
-
+    if 'TooManyRequests' in post.text:
+      print(f'Puchase failed. Retrying... {Asset}')
+      time.sleep(5)
+    else:
+      print(f'Bought item {Asset}')
+      HasDoneSucess = True
+      
 print('Done!')
